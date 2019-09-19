@@ -10,10 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.imooc.miaoshaproject.dao.UserDOMapper;
 import com.imooc.miaoshaproject.dataobject.UserDO;
 
-/**
- * Hello world!
- *
- */
 @SpringBootApplication(scanBasePackages = {"com.imooc.miaoshaproject"})
 @MapperScan("com.imooc.miaoshaproject.dao")
 public class App {
