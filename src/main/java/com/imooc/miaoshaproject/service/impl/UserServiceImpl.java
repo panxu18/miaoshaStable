@@ -11,12 +11,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.imooc.miaoshaproject.dao.UserPasswordDOMapper;
 import com.imooc.miaoshaproject.dataobject.UserDO;
 import com.imooc.miaoshaproject.dataobject.UserPasswordDO;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by hzllb on 2018/11/11.
@@ -32,6 +35,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private ValidatorImpl validator;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     public UserModel getUserById(Integer id) {
@@ -90,6 +96,20 @@ public class UserServiceImpl implements UserService {
         //比对用户信息内加密的密码是否和传输进来的密码相匹配
         if(!StringUtils.equals(encrptPassword,userModel.getEncrptPassword())){
             throw new BusinessException(EmBusinessError.USER_LOGIN_FAIL);
+        }
+        return userModel;
+    }
+
+    /**
+     * 通过缓存获取 userModel，如果缓存中没有则从数据库中查询，然后设置到缓存中
+     */
+    @Override
+    public UserModel getUserInCacheById(Integer userId) {
+        UserModel userModel = (UserModel) redisTemplate.opsForValue().get("user_validate_" + userId);
+        if (null == userModel) {
+            userModel = getUserById(userId);
+            redisTemplate.opsForValue().set("user_validate_" + userId, userModel);
+            redisTemplate.expire("user_validate_" + userId, 10, TimeUnit.MINUTES);
         }
         return userModel;
     }

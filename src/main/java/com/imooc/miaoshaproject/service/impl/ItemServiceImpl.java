@@ -14,11 +14,13 @@ import com.imooc.miaoshaproject.service.PromoService;
 import com.imooc.miaoshaproject.validator.ValidationResult;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +40,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private ItemStockDOMapper itemStockDOMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     private ItemDO convertItemDOFromItemModel(ItemModel itemModel){
         if(itemModel == null){
@@ -132,6 +137,22 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     public void increaseSales(Integer itemId, Integer amount) throws BusinessException {
         itemDOMapper.increaseSales(itemId,amount);
+    }
+
+    /**
+     * 通过缓存获取itemModel对象
+     * @param itemId itemModel 的ID
+     * @return 指定itemId的对象，如果缓存和数据库中都不存在则返回null
+     */
+    @Override
+    public ItemModel getItemInCacheById(Integer itemId) {
+        ItemModel itemModel = (ItemModel) redisTemplate.opsForValue().get("item_validate_" + itemId);
+        if (null == itemModel) {
+            itemModel = getItemById(itemId);
+            redisTemplate.opsForValue().set("item_validate_" + itemId, itemModel);
+            redisTemplate.expire("item_validate_" + itemId, 10, TimeUnit.MINUTES);
+        }
+        return itemModel;
     }
 
     private ItemModel convertModelFromDataObject(ItemDO itemDO,ItemStockDO itemStockDO){
