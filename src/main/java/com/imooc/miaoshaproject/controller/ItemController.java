@@ -9,6 +9,7 @@ import com.imooc.miaoshaproject.controller.viewobject.ItemVO;
 import com.imooc.miaoshaproject.error.BusinessException;
 import com.imooc.miaoshaproject.response.CommonReturnType;
 import com.imooc.miaoshaproject.service.CacheService;
+import com.imooc.miaoshaproject.service.PromoService;
 import com.imooc.miaoshaproject.service.model.ItemModel;
 import org.joda.time.format.DateTimeFormat;
 import org.springframework.beans.BeanUtils;
@@ -35,6 +36,9 @@ public class ItemController extends BaseController {
 
     @Autowired
     private CacheService cacheService;
+
+    @Autowired
+    private PromoService promoService;
 
     //创建商品的controller
     @RequestMapping(value = "/create",method = {RequestMethod.POST},consumes={CONTENT_TYPE_FORMED})
@@ -97,7 +101,17 @@ public class ItemController extends BaseController {
         return CommonReturnType.create(itemVOList);
     }
 
-
+    /**
+     * 发布商品
+     * @param id
+     * @return
+     */
+    @RequestMapping(value = "/publicpromo",method = {RequestMethod.GET})
+    @ResponseBody
+    public CommonReturnType publicPromo(@RequestParam(name="id")Integer id){
+        promoService.publicPromo(id);
+        return CommonReturnType.create(null);
+    }
 
     private ItemVO convertVOFromModel(ItemModel itemModel){
         if(itemModel == null){

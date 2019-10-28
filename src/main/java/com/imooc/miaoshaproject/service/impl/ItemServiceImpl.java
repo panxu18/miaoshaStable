@@ -5,6 +5,7 @@ import com.imooc.miaoshaproject.dataobject.ItemDO;
 import com.imooc.miaoshaproject.dataobject.ItemStockDO;
 import com.imooc.miaoshaproject.error.BusinessException;
 import com.imooc.miaoshaproject.error.EmBusinessError;
+import com.imooc.miaoshaproject.mq.MQProducer;
 import com.imooc.miaoshaproject.service.model.ItemModel;
 import com.imooc.miaoshaproject.service.model.PromoModel;
 import com.imooc.miaoshaproject.validator.ValidatorImpl;
@@ -43,6 +44,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private MQProducer producer;
 
     private ItemDO convertItemDOFromItemModel(ItemModel itemModel){
         if(itemModel == null){
@@ -122,12 +126,20 @@ public class ItemServiceImpl implements ItemService {
     @Override
     @Transactional
     public boolean decreaseStock(Integer itemId, Integer amount) throws BusinessException {
-        int affectedRow =  itemStockDOMapper.decreaseStock(itemId,amount);
-        if(affectedRow > 0){
-            //更新库存成功
+        // 减少redis中的库存
+        long result = redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue() * -1);
+        if(result >= 0){
+            //缓存库存减少成功，将消息发布到rocketMQ
+            boolean flag = producer.reduceStock(itemId, amount);
+            if (!flag) {
+                // mq消息发布失败
+                redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue());
+                return false;
+            }
             return true;
         }else{
-            //更新库存失败
+            //更新库存失败，恢复库存
+            redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue());
             return false;
         }
 
