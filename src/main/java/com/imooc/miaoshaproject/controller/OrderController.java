@@ -44,7 +44,7 @@ public class OrderController extends BaseController {
                 || (userModel = (UserModel) redisTemplate.opsForValue().get(token)) == null) {
             throw new BusinessException(EmBusinessError.USER_NOT_LOGIN,"用户还未登陆，不能下单");
         }
-        OrderModel orderModel = orderService.createOrder(userModel.getId(),itemId,promoId,amount);
+        boolean result = orderService.createOrder(userModel.getId(),itemId,promoId,amount);
 
         return CommonReturnType.create(null);
     }

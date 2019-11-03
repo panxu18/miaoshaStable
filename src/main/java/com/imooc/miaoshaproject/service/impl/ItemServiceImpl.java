@@ -123,25 +123,18 @@ public class ItemServiceImpl implements ItemService {
         return itemModel;
     }
 
+    /**
+     * 减少缓存库存
+     * @param itemId
+     * @param amount
+     * @return 返回剩余库存
+     */
     @Override
     @Transactional
-    public boolean decreaseStock(Integer itemId, Integer amount) throws BusinessException {
+    public long decreaseStock(Integer itemId, Integer amount){
         // 减少redis中的库存
         long result = redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue() * -1);
-        if(result >= 0){
-            //缓存库存减少成功，将消息发布到rocketMQ
-            boolean flag = producer.reduceStock(itemId, amount);
-            if (!flag) {
-                // mq消息发布失败
-                redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue());
-                return false;
-            }
-            return true;
-        }else{
-            //更新库存失败，恢复库存
-            redisTemplate.opsForValue().increment("promo_item_stock_" + itemId, amount.intValue());
-            return false;
-        }
+        return result;
 
     }
 
